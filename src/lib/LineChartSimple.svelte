@@ -152,6 +152,13 @@
     return format(hasDecimal ? ".1%" : ".0%");
   })();
 
+  function formatChartNumber(value, formatter) {
+    const formatted = formatter(value);
+    if (units_chart === "£") return `£${formatted}`;
+    if (units_chart === "p") return `${formatted}p`;
+    return formatted;
+  }
+
   function formatLastValue(val) {
     if (val === null || val === undefined) return "";
     const numeric = typeof val === "number" ? val : Number(val);
@@ -163,7 +170,7 @@
         const rounded = Math.round(numeric * 10 ** dp) / 10 ** dp;
         return format(`.${dp}%`)(rounded / 100);
       }
-      return format(`,.${dpOverride}f`)(numeric);
+      return formatChartNumber(numeric, format(`,.${dpOverride}f`));
     }
 
     if (units_chart === "percentage") {
@@ -173,7 +180,10 @@
       return format(`.${dp}%`)(rounded / 100);
     }
 
-    return numeric < 20 ? format(",.1f")(numeric) : formatValue(numeric);
+    return formatChartNumber(
+      numeric,
+      numeric < 20 ? format(",.1f") : formatValue
+    );
   }
 
   const formatLastDate = timeFormat("%-d %b");
@@ -327,9 +337,11 @@
           ? format(`,.${dpOverride}f`)(numeric) + " thousand"
           : "";
       }
-      return Number.isFinite(numeric)
-        ? format(`,.${dpOverride}f`)(numeric)
-        : "";
+      if (!Number.isFinite(numeric)) return "";
+      const formatted = format(`,.${dpOverride}f`)(numeric);
+      if (units_chart === "£") return `${formatted} pounds`;
+      if (units_chart === "p") return `${formatted} pence`;
+      return formatted;
     }
 
     if (units_chart === "percentage") {
@@ -337,7 +349,10 @@
     } else if (thousandsBoolean) {
       return format(numeric < 20 ? ",.1f" : ",.0f")(numeric) + " thousand";
     } else {
-      return format(numeric < 20 ? ",.1f" : ",.0f")(numeric);
+      const formatted = format(numeric < 20 ? ",.1f" : ",.0f")(numeric);
+      if (units_chart === "£") return `${formatted} pounds`;
+      if (units_chart === "p") return `${formatted} pence`;
+      return formatted;
     }
   };
 
@@ -444,7 +459,7 @@
                 >
                   {units_chart === "percentage"
                     ? formatPercent(tick / 100)
-                    : formatValue(tick)}
+                    : formatChartNumber(tick, formatValue)}
                 </text>
               </g>
             {/each}
