@@ -44,7 +44,7 @@ metadata_sheet_index <- 1
 metadata_csv_path   <- "metadata.csv"
 
 # Maximum decimal places present in source data (used to snap float noise first)
-source_max_dp <- 3L
+source_max_dp <- 5L
 
 # Fallback decimal places when a series has no custom dp in metadata
 default_dp <- source_max_dp
@@ -144,6 +144,25 @@ df <- tryCatch(
     stop("Failed to read the Excel sheet. Check the path and sheet (name/index). Original error: ", e$message)
   }
 ) %>% as_tibble()
+
+local({
+  source_header_row <- if (isTRUE(autodetect_header)) detect_header_row(df) else header_row
+  if (is.na(source_header_row)) source_header_row <- header_row
+  source_values <- df %>%
+    filter(row_number() > source_header_row) %>%
+    select(seq(2L, ncol(df), by = 2L)) %>%
+    unlist(use.names = FALSE) %>%
+    as.character() %>%
+    as.numeric() %>%
+    suppressWarnings()
+  source_values <- source_values[is.finite(source_values)]
+  source_dp <- vapply(source_values, function(value) {
+    value_text <- format(value, scientific = FALSE, trim = TRUE, digits = 17)
+    if (grepl(".", value_text, fixed = TRUE)) nchar(sub("^[^.]*\\.", "", value_text)) else 0L
+  }, integer(1))
+  message("Maximum apparent decimal places after import (may include floating-point noise): ",
+          if (length(source_dp)) max(source_dp) else "no numeric values")
+})
 
 # ======================================
 # ==== 0) Metadata: export to CSV   =====
